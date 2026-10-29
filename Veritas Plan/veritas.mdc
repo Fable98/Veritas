@@ -1,0 +1,38 @@
+---
+description: Veritas project rules (contracts, SDK, verification layer)
+alwaysApply: true
+---
+
+# Veritas: standing rules for Cursor
+
+Veritas is a research-grade protocol linking bounded agent spending (mandate), task-typed delivery evidence (evidence policy) and deterministic settlement. Testnet only. Read `VERITAS_PLAN.md` and `docs/invariants.md` before changing anything.
+
+## Hard rules
+- Never weaken or delete an invariant (INV-1..10) to make a test pass. If an invariant seems wrong, stop and explain.
+- Budget checks that read mutable state belong in the ERC-7579 hook at execution time, never in `validateUserOp`.
+- `committed + reserved <= budget` must hold after every state-changing function.
+- Loosening any mandate parameter goes through the timelock; tightening is immediate.
+- Every escrow terminal path calls `finalizeReservation` exactly once.
+- Settlement payouts come only from the pure `computePayout`. State machine code chooses inputs; it does not do payout math.
+- Never add an upgrade, recovery or admin path that bypasses mandate policy.
+- LLM output is untrusted. Nothing from the model or from seller-supplied text reaches a signer except through the SDK policy gate.
+
+## Solidity
+- solc 0.8.28, custom errors, no `require` strings.
+- Checks-effects-interactions; reentrancy guard on every fund-moving external function.
+- `uint128` amounts with explicit checked casts. No `unchecked` in ledger or payout code without a comment proving safety.
+- Emit an event for every state change.
+- NatSpec on every external function stating which invariant it touches.
+- No full implementation without tests in the same change: unit, plus fuzz or invariant where an INV applies.
+
+## TypeScript
+- Strict mode, no `any`. Shared types come from `@veritas/shared`; never redefine ABIs or enums locally.
+- EIP-712 domain: name `"Veritas"`, version `"1"`.
+- The SDK policy gate is deterministic code; do not call an LLM inside it.
+
+## Workflow
+- Small changes. One task from the plan per change set.
+- If a requirement is ambiguous, list the options and ask; do not guess on security-relevant behaviour.
+- When a test fails, report the cause before changing the test.
+- Record any design decision that changes D1-D3 in `docs/decisions/` as an ADR.
+- Standards (x402, AP2, ERC-8004, ERC-4337, ERC-7579) are still moving: check the pinned version in `docs/spec` before relying on a signature or behaviour from memory.
